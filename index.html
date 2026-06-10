@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GrowthKamao Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+--primary:#6C63FF;--primary-light:#EEF0FF;--primary-dark:#5A52D5;
+--secondary:#FF6584;--success:#28C76F;--warning:#FF9F43;--danger:#EA5455;--info:#00CFE8;
+--bg:#F8F9FC;--white:#FFFFFF;--text-dark:#2D3142;--text-gray:#8A8FA3;--border:#E4E6EF;
+--shadow:0 4px 24px rgba(108,99,255,0.08);--shadow-lg:0 8px 32px rgba(108,99,255,0.12);
+}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
+html,body{font-size:14px;background:var(--bg);color:var(--text-dark);}
+button{cursor:pointer;border:none;font-family:inherit;transition:all .2s;}
+button:active{transform:scale(0.97);}
+input,select,textarea{font-family:inherit;font-size:14px;outline:none;}
+a{text-decoration:none;color:var(--primary);cursor:pointer;}
+.page{display:none;animation:fadeIn .3s ease;}
+.page.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+@keyframes slideInRight{from{transform:translateX(100%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#EEF0FF 0%,#FFE4EC 100%);}
+.auth-card{background:#fff;border-radius:20px;padding:32px 24px;width:100%;max-width:420px;box-shadow:var(--shadow-lg);}
+.logo{text-align:center;margin-bottom:24px;}
+.logo h1{font-size:28px;font-weight:700;background:linear-gradient(135deg,#6C63FF,#FF6584);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.logo p{font-size:11px;color:var(--text-gray);letter-spacing:2px;margin-top:2px;}
+
+.form-group{margin-bottom:16px;}
+.form-group label{display:block;font-weight:500;margin-bottom:6px;font-size:13px;}
+.input-wrap{position:relative;}
+.input-wrap input,.input-wrap textarea,.input-wrap select{width:100%;padding:12px 14px 12px 42px;border:1.5px solid var(--border);border-radius:10px;background:#fff;transition:all .2s;}
+input,select,textarea{padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;background:#fff;width:100%;}
+input:focus,select:focus,textarea:focus,.input-wrap input:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(108,99,255,0.1);}
+.error-msg{color:var(--danger);font-size:12px;margin-top:4px;display:none;}
+.error-msg.show{display:block;}
+
+.btn{padding:12px 22px;border-radius:10px;font-weight:500;font-size:13px;display:inline-flex;align-items:center;justify-content:center;gap:8px;}
+.btn-primary{background:linear-gradient(135deg,#6C63FF,#5A52D5);color:#fff;}
+.btn-primary:hover{box-shadow:0 8px 20px rgba(108,99,255,0.3);}
+.btn-secondary{background:var(--primary-light);color:var(--primary);}
+.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text-dark);}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn-success{background:var(--success);color:#fff;}
+.btn-warning{background:var(--warning);color:#fff;}
+.btn:disabled{opacity:0.6;cursor:not-allowed;}
+.btn-sm{padding:6px 12px;font-size:11px;border-radius:8px;}
+.btn-block{width:100%;}
+.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;}
+.spinner-purple{width:32px;height:32px;border:3px solid var(--primary-light);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;}
+
+.app{display:flex;min-height:100vh;}
+.sidebar{position:fixed;left:0;top:0;width:260px;height:100vh;background:#fff;border-right:1px solid var(--border);padding:20px 0;display:flex;flex-direction:column;z-index:50;}
+.sidebar-logo{padding:0 20px 20px;border-bottom:1px solid var(--border);}
+.sidebar-menu{flex:1;padding:16px 12px;overflow-y:auto;}
+.menu-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;color:var(--text-dark);cursor:pointer;margin-bottom:4px;font-weight:500;font-size:13px;}
+.menu-item:hover{background:var(--primary-light);}
+.menu-item.active{background:linear-gradient(135deg,#6C63FF,#5A52D5);color:#fff;}
+.menu-icon{font-size:18px;}
+.sidebar-user{padding:16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#6C63FF,#FF6584);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;flex-shrink:0;}
+.user-info-mini{flex:1;min-width:0;}
+.user-info-mini .name{font-weight:500;font-size:13px;}
+.user-info-mini .email{font-size:11px;color:var(--text-gray);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+.main{flex:1;margin-left:260px;padding:24px;max-width:100%;min-width:0;}
+
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
+.page-header h2{font-size:22px;font-weight:600;}
+.page-header p{color:var(--text-gray);font-size:13px;}
+
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.stat-card{background:#fff;border-radius:14px;padding:16px;box-shadow:var(--shadow);}
+.stat-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:8px;}
+.stat-icon.blue{background:#E0F4FF;color:#0093E9;}
+.stat-icon.orange{background:#FFF3E0;color:var(--warning);}
+.stat-icon.green{background:#E5F8EE;color:var(--success);}
+.stat-icon.purple{background:var(--primary-light);color:var(--primary);}
+.stat-card .num{font-size:22px;font-weight:600;}
+.stat-card .lbl{font-size:12px;color:var(--text-gray);}
+
+.section{background:#fff;border-radius:16px;padding:20px;box-shadow:var(--shadow);margin-bottom:20px;}
+.section-title{font-size:16px;font-weight:600;margin-bottom:14px;}
+
+.table-wrap{overflow-x:auto;width:100%;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+table th{background:var(--bg);padding:11px 12px;text-align:left;font-weight:600;color:var(--text-dark);border-bottom:1px solid var(--border);white-space:nowrap;}
+table td{padding:11px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+table tr:hover td{background:#FAFBFD;}
+.empty{text-align:center;padding:40px 20px;color:var(--text-gray);}
+.empty-icon{font-size:48px;margin-bottom:10px;}
+
+.badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;display:inline-block;}
+.badge-pending{background:#FFF3E0;color:var(--warning);}
+.badge-inprogress{background:#E0F4FF;color:var(--info);}
+.badge-completed{background:#E5F8EE;color:var(--success);}
+.badge-cancelled{background:#FFE4E4;color:var(--danger);}
+.badge-approved{background:#E5F8EE;color:var(--success);}
+.badge-rejected{background:#FFE4E4;color:var(--danger);}
+.badge-active{background:#E5F8EE;color:var(--success);}
+.badge-inactive{background:#FFE4E4;color:var(--danger);}
+
+.tabs{display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;border-bottom:1px solid var(--border);padding-bottom:0;}
+.tab{padding:10px 18px;border:none;background:none;font-size:13px;color:var(--text-gray);font-weight:500;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary);}
+
+.filter-tabs{display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px;}
+.filter-tabs .tab{border:1.5px solid var(--border);background:#fff;border-radius:20px;border-bottom:1.5px solid var(--border);}
+.filter-tabs .tab.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+.row-4{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.show{display:flex;}
+.modal{background:#fff;border-radius:16px;padding:24px;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;}
+.modal-large{max-width:800px;}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.modal-header h3{font-size:18px;font-weight:600;}
+.modal-close{background:none;font-size:22px;color:var(--text-gray);}
+
+#toast-wrap{position:fixed;bottom:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
+.toast{background:#fff;padding:12px 16px;border-radius:10px;box-shadow:var(--shadow-lg);min-width:240px;max-width:340px;display:flex;align-items:center;gap:10px;animation:slideInRight .3s ease;border-left:4px solid var(--success);font-size:13px;}
+.toast.error{border-left-color:var(--danger);}
+.toast.warning{border-left-color:var(--warning);}
+.toast.info{border-left-color:var(--info);}
+
+#loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,0.85);z-index:9998;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+#loading-overlay.show{display:flex;}
+
+.action-btns{display:flex;gap:6px;flex-wrap:wrap;}
+.icon-btn{width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;border:none;cursor:pointer;}
+.icon-btn.edit{background:#E0F4FF;color:#0093E9;}
+.icon-btn.delete{background:#FFE4E4;color:var(--danger);}
+
+.qty-pair{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center;}
+.qty-pair input{width:100%;}
+
+.mobile-header{display:none;justify-content:space-between;align-items:center;padding:14px 16px;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:40;}
+.menu-toggle{background:none;border:none;font-size:22px;cursor:pointer;}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:49;}
+
+.copy-btn{background:none;border:none;color:var(--primary);cursor:pointer;font-size:14px;}
+
+.toggle{position:relative;display:inline-block;width:44px;height:24px;}
+.toggle input{display:none;}
+.toggle-slider{position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.3s;}
+.toggle-slider:before{content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;}
+.toggle input:checked + .toggle-slider{background:var(--primary);}
+.toggle input:checked + .toggle-slider:before{transform:translateX(20px);}
+
+.search-box{position:relative;margin-bottom:14px;}
+.search-box input{padding-left:40px;}
+.search-box::before{content:'🔍';position:absolute;left:14px;top:50%;transform:translateY(-50%);}
+
+.preview-thumb{width:36px;height:36px;border-radius:8px;object-fit:cover;border:1px solid var(--border);}
+.help-text{font-size:11px;color:var(--text-gray);margin-top:4px;}
+
+@media(max-width:1024px){
+  .stats-row{grid-template-columns:repeat(2,1fr);}
+  .row,.row-3{grid-template-columns:1fr;}
+}
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%);transition:.3s;}
+  .sidebar.show{transform:translateX(0);}
+  .sidebar-overlay.show{display:block;}
+  .main{margin-left:0;padding:16px;}
+  .mobile-header{display:flex;}
+  .stats-row{grid-template-columns:repeat(2,1fr);gap:8px;}
+}
+.hide{display:none !important;}
+.mb-10{margin-bottom:10px;}
+.mt-10{margin-top:10px;}
+.mt-16{margin-top:16px;}
+.center{text-align:center;}
+</style>
+</head>
+<body>
+
+<div id="loading-overlay"><div class="spinner-purple"></div><p id="loading-text">Loading...</p></div>
+<div id="toast-wrap"></div>
+
+<div id="app-shell" class="app">
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo logo"><h1>GrowthKamao</h1><p>ADMIN PANEL</p></div>
+  <nav class="sidebar-menu">
+    <div class="menu-item active" onclick="showPage('dashboard')" data-nav="dashboard"><span class="menu-icon">📊</span> Dashboard</div>
+    <div class="menu-item" onclick="showPage('services')" data-nav="services"><span class="menu-icon">🧩</span> Services</div>
+    <div class="menu-item" onclick="showPage('payments')" data-nav="payments"><span class="menu-icon">💳</span> Payment Requests</div>
+    <div class="menu-item" onclick="showPage('users')" data-nav="users"><span class="menu-icon">👥</span> Users</div>
+    <div class="menu-item" onclick="showPage('orders')" data-nav="orders"><span class="menu-icon">📦</span> All Orders</div>
+    <div class="menu-item" onclick="showPage('settings')" data-nav="settings"><span class="menu-icon">⚙️</span> Settings</div>
+  </nav>
+  <div class="sidebar-user">
+    <div class="avatar" id="side-avatar">A</div>
+    <div class="user-info-mini"><div class="name" id="side-name">Admin</div><div class="email" id="side-email">admin@local</div></div>
+  </div>
+</aside>
+
+<main class="main">
+<div class="mobile-header">
+  <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+  <h1 style="font-size:16px;font-weight:700;background:linear-gradient(135deg,#6C63FF,#FF6584);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Admin Panel</h1>
+  <div class="avatar" id="mob-avatar">A</div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="page-dashboard" class="page active">
+  <div class="page-header"><div><h2>Dashboard</h2><p>Overview of your panel</p></div></div>
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-icon blue">👥</div><div class="num" id="s-users">0</div><div class="lbl">Total Users</div></div>
+    <div class="stat-card"><div class="stat-icon purple">📦</div><div class="num" id="s-orders-today">0</div><div class="lbl">Today's Orders</div></div>
+    <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="num" id="s-pending">0</div><div class="lbl">Pending Payments</div></div>
+    <div class="stat-card"><div class="stat-icon green">💰</div><div class="num">₹<span id="s-revenue">0</span></div><div class="lbl">Total Revenue</div></div>
+  </div>
+  <div class="section">
+    <div class="section-title">Recent Payment Requests</div>
+    <div class="table-wrap"><table id="dash-payments"><thead><tr><th>Name</th><th>Amount</th><th>UTR</th><th>Date</th><th>Action</th></tr></thead><tbody><tr><td colspan="5" class="empty">Loading...</td></tr></tbody></table></div>
+  </div>
+  <div class="section">
+    <div class="section-title">Recent Orders</div>
+    <div class="table-wrap"><table id="dash-orders"><thead><tr><th>User</th><th>Service</th><th>Qty</th><th>Price</th><th>Status</th><th>Date</th></tr></thead><tbody><tr><td colspan="6" class="empty">Loading...</td></tr></tbody></table></div>
+  </div>
+</div>
+
+<!-- SERVICES -->
+<div id="page-services" class="page">
+  <div class="page-header"><div><h2>Services Management</h2><p>Unlimited platforms, categories, sub-categories & services</p></div></div>
+  <div class="section">
+    <div class="tabs" id="svc-tabs">
+      <button class="tab active" onclick="switchSvcTab('platforms',this)">Platforms</button>
+      <button class="tab" onclick="switchSvcTab('categories',this)">Categories</button>
+      <button class="tab" onclick="switchSvcTab('subcategories',this)">Sub-Categories</button>
+      <button class="tab" onclick="switchSvcTab('serviceslist',this)">Services</button>
+    </div>
+
+    <!-- PLATFORMS -->
+    <div id="tab-platforms" class="svc-tab">
+      <div class="row-3 mb-10">
+        <div><label>Platform Name</label><input type="text" id="pl-name" placeholder="e.g. Instagram"></div>
+        <div>
+          <label>App Image URL (imgbb link)</label>
+          <input type="text" id="pl-image" placeholder="https://i.ibb.co/...">
+          <div class="help-text">Paste imgbb image link of the app logo. Shown on user panel.</div>
+        </div>
+        <div style="display:flex;align-items:flex-end;"><button class="btn btn-primary btn-block" onclick="addPlatform()">+ Add Platform</button></div>
+      </div>
+      <div class="table-wrap"><table id="pl-table"><thead><tr><th>#</th><th>Image</th><th>Name</th><th>Created</th><th>Actions</th></tr></thead><tbody><tr><td colspan="5" class="empty">Loading...</td></tr></tbody></table></div>
+    </div>
+
+    <!-- CATEGORIES -->
+    <div id="tab-categories" class="svc-tab hide">
+      <div class="row-3 mb-10">
+        <div><label>Platform</label><select id="cat-platform"></select></div>
+        <div><label>Category Name</label><input type="text" id="cat-name" placeholder="e.g. Followers"></div>
+        <div>
+          <label>Image URL (imgbb link)</label>
+          <input type="text" id="cat-image" placeholder="https://i.ibb.co/...">
+          <div class="help-text">Optional — shown on user panel category card.</div>
+        </div>
+      </div>
+      <div class="mb-10"><button class="btn btn-primary" onclick="addCategory()">+ Add Category</button></div>
+      <div class="table-wrap"><table id="cat-table"><thead><tr><th>#</th><th>Image</th><th>Platform</th><th>Category</th><th>Actions</th></tr></thead><tbody><tr><td colspan="5" class="empty">Loading...</td></tr></tbody></table></div>
+    </div>
+
+    <!-- SUB-CATEGORIES -->
+    <div id="tab-subcategories" class="svc-tab hide">
+      <div class="row-3 mb-10">
+        <div><label>Platform</label><select id="sub-platform" onchange="loadCategoryDropdown('sub-category',this.value)"></select></div>
+        <div><label>Category</label><select id="sub-category"></select></div>
+        <div><label>Sub-Category Name</label><input type="text" id="sub-name" placeholder="e.g. Reels Views"></div>
+      </div>
+      <div class="row-3 mb-10">
+        <div>
+          <label>Image URL (imgbb link)</label>
+          <input type="text" id="sub-image" placeholder="https://i.ibb.co/...">
+          <div class="help-text">Optional — shown on user panel sub-category card.</div>
+        </div>
+        <div></div>
+        <div style="display:flex;align-items:flex-end;"><button class="btn btn-primary btn-block" onclick="addSubCategory()">+ Add Sub-Category</button></div>
+      </div>
+      <div class="table-wrap"><table id="sub-table"><thead><tr><th>#</th><th>Image</th><th>Platform</th><th>Category</th><th>Sub-Cat</th><th>Actions</th></tr></thead><tbody><tr><td colspan="6" class="empty">Loading...</td></tr></tbody></table></div>
+    </div>
+
+    <!-- SERVICES -->
+    <div id="tab-serviceslist" class="svc-tab hide">
+      <div class="section" style="background:var(--bg);padding:16px;">
+        <h4 style="margin-bottom:12px;" id="svc-form-title">Add New Service</h4>
+        <input type="hidden" id="svc-edit-id">
+        <div class="form-group">
+          <label>Sub-Category (Platform › Category › Sub-Category)</label>
+          <select id="svc-subcategory"><option value="">Select Sub-Category</option></select>
+        </div>
+        <div class="form-group mt-10"><label>Service Title</label><input type="text" id="svc-title" placeholder="e.g. 1000 Reels Views - Fast Delivery"></div>
+        <div class="form-group"><label>Description (optional)</label><textarea id="svc-desc" placeholder="Service description" rows="2"></textarea></div>
+        <div class="form-group">
+          <label>Quantity & Price Options</label>
+          <div id="qty-pairs"></div>
+          <button class="btn btn-secondary btn-sm mt-10" onclick="addQtyPair()">+ Add Quantity Option</button>
+        </div>
+        <div class="form-group">
+          <label>Active</label>
+          <label class="toggle"><input type="checkbox" id="svc-active" checked><span class="toggle-slider"></span></label>
+        </div>
+        <button class="btn btn-primary" onclick="saveService()">💾 Save Service</button>
+        <button class="btn btn-outline" onclick="resetServiceForm()">Reset</button>
+      </div>
+      <div class="table-wrap mt-16"><table id="svc-table"><thead><tr><th>#</th><th>Platform</th><th>Category</th><th>Sub-Cat</th><th>Title</th><th>Options</th><th>Status</th><th>Actions</th></tr></thead><tbody><tr><td colspan="8" class="empty">Loading...</td></tr></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAYMENTS -->
+<div id="page-payments" class="page">
+  <div class="page-header"><div><h2>Payment Requests</h2><p>Approve or reject payment requests</p></div></div>
+  <div class="section">
+    <div class="search-box"><input type="text" id="pay-search" placeholder="Search by name, email or UTR..." oninput="renderPayments()"></div>
+    <div class="filter-tabs">
+      <button class="tab active" onclick="filterPay(this,'pending')">Pending</button>
+      <button class="tab" onclick="filterPay(this,'approved')">Approved</button>
+      <button class="tab" onclick="filterPay(this,'rejected')">Rejected</button>
+      <button class="tab" onclick="filterPay(this,'all')">All</button>
+    </div>
+    <div class="table-wrap"><table id="pay-table"><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Amount</th><th>UTR</th><th>Date</th><th>Status</th><th>Action</th></tr></thead><tbody><tr><td colspan="8" class="empty">Loading...</td></tr></tbody></table></div>
+  </div>
+</div>
+
+<!-- USERS -->
+<div id="page-users" class="page">
+  <div class="page-header"><div><h2>Users Management</h2><p>Manage all registered users</p></div></div>
+  <div class="section">
+    <div class="search-box"><input type="text" id="user-search" placeholder="Search by name or email..." oninput="renderUsers()"></div>
+    <div class="table-wrap"><table id="user-table"><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Balance</th><th>Orders</th><th>Joined</th><th>Status</th><th>Actions</th></tr></thead><tbody><tr><td colspan="8" class="empty">Loading...</td></tr></tbody></table></div>
+  </div>
+  <div class="section">
+    <div class="section-title">Balance Logs</div>
+    <div class="table-wrap"><table id="log-table"><thead><tr><th>Date</th><th>User</th><th>Type</th><th>Amount</th><th>Reason</th></tr></thead><tbody><tr><td colspan="5" class="empty">Loading...</td></tr></tbody></table></div>
+  </div>
+</div>
+
+<!-- ORDERS -->
+<div id="page-orders" class="page">
+  <div class="page-header">
+    <div><h2>All Orders</h2><p>Manage all customer orders</p></div>
+    <button class="btn btn-success" onclick="exportCSV()">⬇️ Export CSV</button>
+  </div>
+  <div class="section">
+    <div class="row-3 mb-10">
+      <div><label>Status</label><select id="ord-filter-status" onchange="renderAdminOrders()"><option value="all">All</option><option value="pending">Pending</option><option value="inprogress">In Progress</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></div>
+      <div><label>Search</label><input type="text" id="ord-filter-search" placeholder="User email / Order ID" oninput="renderAdminOrders()"></div>
+      <div style="display:flex;align-items:flex-end;"><button class="btn btn-outline" onclick="loadAdminOrders()">🔄 Refresh</button></div>
+    </div>
+    <div class="table-wrap"><table id="ord-table"><thead><tr><th>Order ID</th><th>User</th><th>Platform</th><th>Service</th><th>Link</th><th>Qty</th><th>Price</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody><tr><td colspan="10" class="empty">Loading...</td></tr></tbody></table></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div id="page-settings" class="page">
+  <div class="page-header"><div><h2>Settings</h2><p>Configure your panel</p></div></div>
+
+  <div class="section">
+    <div class="section-title">💳 Payment Settings (UPI)</div>
+    <div class="form-group"><label>UPI ID</label><input type="text" id="set-upi" placeholder="yourname@paytm"></div>
+    <button class="btn btn-primary" onclick="saveUPI()">💾 Save & Preview QR</button>
+    <div id="upi-preview" class="hide mt-16 center">
+      <div id="upi-qr" style="display:inline-block;padding:12px;background:#fff;border:1px solid var(--border);border-radius:10px;"></div>
+      <p style="margin-top:10px;font-size:13px;">UPI QR will update for all users ✅</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📱 WhatsApp Notification</div>
+    <div class="form-group"><label>WhatsApp Number (with country code)</label><input type="text" id="set-wa" placeholder="919876543210"></div>
+    <p style="font-size:12px;color:var(--text-gray);margin-bottom:10px;">Users will be redirected here after payment</p>
+    <button class="btn btn-primary" onclick="saveWA()">💾 Save WhatsApp</button>
+    <button class="btn btn-outline" onclick="testWA()">📤 Send Test</button>
+  </div>
+
+  <div class="section">
+    <div class="section-title">⚙️ Panel Settings</div>
+    <div class="form-group"><label>Panel Name</label><input type="text" id="set-panel-name" placeholder="GrowthKamao"></div>
+    <div class="form-group"><label>Welcome Message</label><input type="text" id="set-welcome" placeholder="Grow your social media"></div>
+    <div class="form-group" style="display:flex;align-items:center;gap:12px;"><label style="margin:0;">Maintenance Mode</label><label class="toggle"><input type="checkbox" id="set-maintenance"><span class="toggle-slider"></span></label></div>
+    <button class="btn btn-primary" onclick="savePanel()">💾 Save Panel Settings</button>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- MODAL: Balance Add/Deduct -->
+<div class="modal-overlay" id="balance-modal">
+  <div class="modal">
+    <div class="modal-header"><h3 id="bal-modal-title">Add Balance</h3><button class="modal-close" onclick="closeModal('balance-modal')">×</button></div>
+    <input type="hidden" id="bal-user-id">
+    <input type="hidden" id="bal-action">
+    <div class="form-group"><label>User</label><input type="text" id="bal-user-name" disabled></div>
+    <div class="form-group"><label>Current Balance</label><input type="text" id="bal-current" disabled></div>
+    <div class="form-group"><label>Amount</label><input type="number" id="bal-amount" placeholder="Enter amount"></div>
+    <div class="form-group"><label>Reason (optional)</label><input type="text" id="bal-reason" placeholder="Reason for change"></div>
+    <button class="btn btn-primary" id="bal-confirm" onclick="confirmBalance()">Confirm</button>
+    <button class="btn btn-outline" onclick="closeModal('balance-modal')">Cancel</button>
+  </div>
+</div>
+
+<!-- MODAL: Confirm Delete -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal">
+    <div class="modal-header"><h3>Confirm</h3><button class="modal-close" onclick="closeModal('confirm-modal')">×</button></div>
+    <p id="confirm-msg" style="margin-bottom:16px;">Are you sure?</p>
+    <button class="btn btn-danger" id="confirm-yes">Yes, Delete</button>
+    <button class="btn btn-outline" onclick="closeModal('confirm-modal')">Cancel</button>
+  </div>
+</div>
+
+<!-- MODAL: User Orders -->
+<div class="modal-overlay" id="user-orders-modal">
+  <div class="modal modal-large">
+    <div class="modal-header"><h3 id="uo-title">User Orders</h3><button class="modal-close" onclick="closeModal('user-orders-modal')">×</button></div>
+    <div class="table-wrap"><table id="uo-table"><thead><tr><th>Order ID</th><th>Service</th><th>Qty</th><th>Price</th><th>Status</th><th>Date</th></tr></thead><tbody></tbody></table></div>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBGUc-zTOZsnGL5Q56kDd5Dhbxb57IMEIY",
+  authDomain: "growthkamao-53f8c.firebaseapp.com",
+  databaseURL: "https://growthkamao-53f8c-default-rtdb.firebaseio.com",
+  projectId: "growthkamao-53f8c",
+  storageBucket: "growthkamao-53f8c.firebasestorage.app",
+  messagingSenderId: "343336409216",
+  appId: "1:343336409216:web:3f993b9d1f32d85de0ae65",
+  measurementId: "G-G3MDZKQEZ0"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let currentAdmin = { uid: 'admin', email: 'admin@local', name: 'Admin' };
+let allPlatforms = [];
+let allCategories = [];
+let allSubCategories = [];
+let allServices = [];
+let allPaymentReqs = [];
+let allUsersData = [];
+let allOrdersData = [];
+let allLogs = [];
+let payFilter = 'pending';
+let confirmCallback = null;
+
+function showToast(msg,type='success'){
+  const el = document.createElement('div');
+  el.className = 'toast '+type;
+  const icons={success:'✅',error:'❌',warning:'⚠️',info:'ℹ️'};
+  el.innerHTML = '<span>'+(icons[type]||'')+'</span><span>'+msg+'</span>';
+  document.getElementById('toast-wrap').appendChild(el);
+  setTimeout(()=>el.remove(),3000);
+}
+function showLoading(t='Loading...'){document.getElementById('loading-text').textContent=t;document.getElementById('loading-overlay').classList.add('show');}
+function hideLoading(){document.getElementById('loading-overlay').classList.remove('show');}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('show');document.querySelector('.sidebar-overlay').classList.toggle('show');}
+function openModal(id){document.getElementById(id).classList.add('show');}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+function fmtDate(ts){if(!ts)return'-';const d=new Date(ts);return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});}
+function escapeHtml(s){if(s==null)return'';return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function showConfirm(msg,cb){document.getElementById('confirm-msg').textContent=msg;confirmCallback=cb;openModal('confirm-modal');}
+document.getElementById('confirm-yes').onclick=()=>{if(confirmCallback)confirmCallback();closeModal('confirm-modal');};
+
+function showPage(id){
+  document.querySelectorAll('.main .page').forEach(p=>p.classList.remove('active'));
+  const el = document.getElementById('page-'+id);
+  if(el) el.classList.add('active');
+  document.querySelectorAll('[data-nav]').forEach(n=>n.classList.toggle('active',n.dataset.nav===id));
+  document.getElementById('sidebar')?.classList.remove('show');
+  document.querySelector('.sidebar-overlay')?.classList.remove('show');
+  window.scrollTo(0,0);
+  if(id==='dashboard') loadDashboard();
+  if(id==='services') loadServicesPage();
+  if(id==='payments') loadPayments();
+  if(id==='users') loadUsers();
+  if(id==='orders') loadAdminOrders();
+  if(id==='settings') loadSettings();
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('side-name').textContent = 'Admin';
+  document.getElementById('side-avatar').textContent = 'A';
+  const mob = document.getElementById('mob-avatar'); if(mob) mob.textContent = 'A';
+  hideLoading();
+  showPage('dashboard');
+});
+
+// DASHBOARD
+async function loadDashboard(){
+  try{
+    const [u,o,p] = await Promise.all([
+      db.ref('users').once('value'),
+      db.ref('orders').once('value'),
+      db.ref('paymentRequests').once('value')
+    ]);
+    const users = Object.entries(u.val()||{}).map(([id,v])=>({id,...v})).filter(x=>x.role!=='admin');
+    const orders = Object.entries(o.val()||{}).map(([id,v])=>({id,...v}));
+    const pays = Object.entries(p.val()||{}).map(([id,v])=>({id,...v}));
+    document.getElementById('s-users').textContent = users.length;
+    const today = new Date();today.setHours(0,0,0,0);
+    document.getElementById('s-orders-today').textContent = orders.filter(x=>x.createdAt>=today.getTime()).length;
+    document.getElementById('s-pending').textContent = pays.filter(x=>x.status==='pending').length;
+    document.getElementById('s-revenue').textContent = orders.reduce((s,x)=>s+(+x.totalPrice||0),0).toFixed(2);
+
+    const payTbody = document.querySelector('#dash-payments tbody');
+    const pPending = pays.filter(x=>x.status==='pending').sort((a,b)=>b.createdAt-a.createdAt).slice(0,5);
+    if(!pPending.length) payTbody.innerHTML='<tr><td colspan="5" class="empty">No pending requests</td></tr>';
+    else payTbody.innerHTML = pPending.map(p=>`<tr><td>${escapeHtml(p.userName)}</td><td>₹${(+p.amount).toFixed(2)}</td><td>${escapeHtml(p.utrNumber)}</td><td>${fmtDate(p.createdAt)}</td><td><button class="btn btn-success btn-sm" onclick="approvePayment('${p.id}')">✓ Approve</button> <button class="btn btn-danger btn-sm" onclick="rejectPayment('${p.id}')">✕ Reject</button></td></tr>`).join('');
+
+    const ordTbody = document.querySelector('#dash-orders tbody');
+    const recent = orders.sort((a,b)=>b.createdAt-a.createdAt).slice(0,10);
+    if(!recent.length) ordTbody.innerHTML='<tr><td colspan="6" class="empty">No orders yet</td></tr>';
+    else ordTbody.innerHTML = recent.map(o=>`<tr><td>${escapeHtml(o.userEmail||'')}</td><td>${escapeHtml(o.serviceName||'')}</td><td>${(+o.quantity).toLocaleString('en-IN')}</td><td>₹${(+o.totalPrice).toFixed(2)}</td><td><span class="badge badge-${o.status}">${o.status}</span></td><td>${fmtDate(o.createdAt)}</td></tr>`).join('');
+  }catch(e){console.error(e);showToast('Dashboard load error','error');}
+}
+
+// SERVICES
+async function loadServicesPage(){
+  await loadAllServiceData();
+  renderPlatforms();
+  loadPlatformDropdowns();
+}
+async function loadAllServiceData(){
+  const [p,c,s,sv] = await Promise.all([
+    db.ref('platforms').once('value'),
+    db.ref('categories').once('value'),
+    db.ref('subCategories').once('value'),
+    db.ref('services').once('value')
+  ]);
+  allPlatforms = Object.entries(p.val()||{}).map(([id,v])=>({id,...v}));
+  allCategories = Object.entries(c.val()||{}).map(([id,v])=>({id,...v}));
+  allSubCategories = Object.entries(s.val()||{}).map(([id,v])=>({id,...v}));
+  allServices = Object.entries(sv.val()||{}).map(([id,v])=>({id,...v}));
+}
+function switchSvcTab(tab,el){
+  document.querySelectorAll('#svc-tabs .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.svc-tab').forEach(t=>t.classList.add('hide'));
+  document.getElementById('tab-'+tab).classList.remove('hide');
+  if(tab==='platforms') renderPlatforms();
+  if(tab==='categories'){renderCategories();loadPlatformDropdowns();}
+  if(tab==='subcategories'){renderSubCategories();loadPlatformDropdowns();}
+  if(tab==='serviceslist'){renderServicesAdmin();loadPlatformDropdowns();}
+}
+
+function loadPlatformDropdowns(){
+  const ids=['cat-platform','sub-platform'];
+  ids.forEach(id=>{
+    const sel = document.getElementById(id);
+    if(!sel)return;
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Select Platform</option>' + allPlatforms.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+    if(cur) sel.value=cur;
+  });
+  loadSvcSubCategoryCombined();
+}
+function loadSvcSubCategoryCombined(){
+  const sel = document.getElementById('svc-subcategory');
+  if(!sel)return;
+  const cur = sel.value;
+  const sorted = [...allSubCategories].sort((a,b)=>{
+    const ap = a.platformName||''; const bp = b.platformName||'';
+    if(ap!==bp) return ap.localeCompare(bp);
+    const ac = a.categoryName||''; const bc = b.categoryName||'';
+    if(ac!==bc) return ac.localeCompare(bc);
+    return (a.name||'').localeCompare(b.name||'');
+  });
+  sel.innerHTML = '<option value="">Select Sub-Category</option>' + sorted.map(s=>{
+    const label = `${s.platformName||'-'} › ${s.categoryName||'-'} › ${s.name||''}`;
+    return `<option value="${s.id}">${escapeHtml(label)}</option>`;
+  }).join('');
+  if(cur) sel.value=cur;
+}
+function loadCategoryDropdown(id,platformId){
+  const sel = document.getElementById(id);
+  if(!sel)return;
+  const filtered = allCategories.filter(c=>c.platformId===platformId);
+  sel.innerHTML = '<option value="">Select Category</option>' + filtered.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+}
+
+// PLATFORMS CRUD (now with imageUrl)
+async function addPlatform(){
+  const name = document.getElementById('pl-name').value.trim();
+  const imageUrl = document.getElementById('pl-image').value.trim();
+  if(!name){showToast('Enter platform name','warning');return;}
+  try{
+    const ref = db.ref('platforms').push();
+    const payload = {name,createdAt:Date.now()};
+    if(imageUrl) payload.imageUrl = imageUrl;
+    await ref.set(payload);
+    document.getElementById('pl-name').value='';
+    document.getElementById('pl-image').value='';
+    showToast('Platform added!','success');
+    await loadAllServiceData();
+    renderPlatforms();
+    loadPlatformDropdowns();
+  }catch(e){showToast('Failed: '+e.message,'error');}
+}
+function renderPlatforms(){
+  const tbody = document.querySelector('#pl-table tbody');
+  if(!allPlatforms.length){tbody.innerHTML='<tr><td colspan="5" class="empty">No platforms yet. Add your first platform above.</td></tr>';return;}
+  tbody.innerHTML = allPlatforms.map((p,i)=>{
+    const imgCell = p.imageUrl
+      ? `<img class="preview-thumb" src="${escapeHtml(p.imageUrl)}" onerror="this.outerHTML='<span style=&quot;font-size:22px;&quot;>🌐</span>'">`
+      : `<span style="font-size:22px;">🌐</span>`;
+    return `<tr><td>${i+1}</td><td>${imgCell}</td><td><b>${escapeHtml(p.name)}</b></td><td>${fmtDate(p.createdAt)}</td><td class="action-btns"><button class="icon-btn edit" onclick="editPlatform('${p.id}')">✏️</button><button class="icon-btn delete" onclick="deletePlatform('${p.id}')">🗑️</button></td></tr>`;
+  }).join('');
+}
+async function editPlatform(id){
+  const pl = allPlatforms.find(p=>p.id===id);
+  if(!pl)return;
+  const name = prompt('Edit platform name:',pl.name);
+  if(name===null) return;
+  const trimmedName = name.trim();
+  if(!trimmedName){showToast('Name cannot be empty','warning');return;}
+  const imageUrl = prompt('Edit App Image URL (paste imgbb link, blank to remove):', pl.imageUrl||'');
+  if(imageUrl===null) return;
+  try{
+    const updates = {name:trimmedName};
+    if(imageUrl.trim()) updates.imageUrl = imageUrl.trim();
+    else updates.imageUrl = null;
+    await db.ref('platforms/'+id).update(updates);
+    showToast('Platform updated','success');
+    await loadAllServiceData();
+    renderPlatforms();
+    loadPlatformDropdowns();
+  }catch(e){showToast('Failed','error');}
+}
+function deletePlatform(id){
+  showConfirm('Delete this platform? All its categories, sub-categories and services will also be deleted!',async()=>{
+    try{
+      await db.ref('platforms/'+id).remove();
+      const cats = allCategories.filter(c=>c.platformId===id);
+      for(const c of cats){await db.ref('categories/'+c.id).remove();}
+      const subs = allSubCategories.filter(s=>s.platformId===id);
+      for(const s of subs){await db.ref('subCategories/'+s.id).remove();}
+      const svcs = allServices.filter(s=>s.platformId===id);
+      for(const s of svcs){await db.ref('services/'+s.id).remove();}
+      showToast('Platform deleted','success');
+      await loadAllServiceData();
+      renderPlatforms();
+      loadPlatformDropdowns();
+    }catch(e){showToast('Failed','error');}
+  });
+}
+
+// CATEGORIES CRUD
+async function addCategory(){
+  const platformId = document.getElementById('cat-platform').value;
+  const name = document.getElementById('cat-name').value.trim();
+  const imageUrl = document.getElementById('cat-image').value.trim();
+  if(!platformId||!name){showToast('Fill platform and category name','warning');return;}
+  try{
+    const platform = allPlatforms.find(p=>p.id===platformId);
+    const ref = db.ref('categories').push();
+    const payload = {platformId,platformName:platform?.name||'',name,createdAt:Date.now()};
+    if(imageUrl) payload.imageUrl = imageUrl;
+    await ref.set(payload);
+    document.getElementById('cat-name').value='';
+    document.getElementById('cat-image').value='';
+    showToast('Category added!','success');
+    await loadAllServiceData();
+    renderCategories();
+  }catch(e){showToast('Failed: '+e.message,'error');}
+}
+function renderCategories(){
+  const tbody = document.querySelector('#cat-table tbody');
+  if(!allCategories.length){tbody.innerHTML='<tr><td colspan="5" class="empty">No categories yet</td></tr>';return;}
+  tbody.innerHTML = allCategories.map((c,i)=>{
+    const pl = allPlatforms.find(p=>p.id===c.platformId);
+    const imgCell = c.imageUrl
+      ? `<img class="preview-thumb" src="${escapeHtml(c.imageUrl)}" onerror="this.outerHTML='<span style=&quot;font-size:22px;&quot;>📁</span>'">`
+      : `<span style="font-size:22px;">📁</span>`;
+    return `<tr><td>${i+1}</td><td>${imgCell}</td><td>${escapeHtml(pl?.name||c.platformName||'-')}</td><td><b>${escapeHtml(c.name)}</b></td><td class="action-btns"><button class="icon-btn edit" onclick="editCategory('${c.id}')">✏️</button><button class="icon-btn delete" onclick="deleteCategory('${c.id}')">🗑️</button></td></tr>`;
+  }).join('');
+}
+async function editCategory(id){
+  const cat = allCategories.find(c=>c.id===id);
+  if(!cat)return;
+  const name = prompt('Edit category name:',cat.name);
+  if(name===null) return;
+  const trimmedName = name.trim();
+  if(!trimmedName){showToast('Name cannot be empty','warning');return;}
+  const imageUrl = prompt('Edit image URL (imgbb link, blank to remove):', cat.imageUrl||'');
+  if(imageUrl===null) return;
+  try{
+    const updates = {name:trimmedName};
+    if(imageUrl.trim()) updates.imageUrl = imageUrl.trim();
+    else updates.imageUrl = null;
+    await db.ref('categories/'+id).update(updates);
+    showToast('Category updated','success');
+    await loadAllServiceData();
+    renderCategories();
+  }catch(e){showToast('Failed','error');}
+}
+function deleteCategory(id){
+  showConfirm('Delete this category? All its sub-categories and services will also be deleted!',async()=>{
+    try{
+      await db.ref('categories/'+id).remove();
+      const subs = allSubCategories.filter(s=>s.categoryId===id);
+      for(const s of subs){await db.ref('subCategories/'+s.id).remove();}
+      const svcs = allServices.filter(s=>s.categoryId===id);
+      for(const s of svcs){await db.ref('services/'+s.id).remove();}
+      showToast('Category deleted','success');
+      await loadAllServiceData();
+      renderCategories();
+    }catch(e){showToast('Failed','error');}
+  });
+}
+
+// SUB-CATEGORIES CRUD (now with imageUrl)
+async function addSubCategory(){
+  const platformId = document.getElementById('sub-platform').value;
+  const categoryId = document.getElementById('sub-category').value;
+  const name = document.getElementById('sub-name').value.trim();
+  const imageUrl = document.getElementById('sub-image').value.trim();
+  if(!platformId||!categoryId||!name){showToast('Fill all fields','warning');return;}
+  try{
+    const platform = allPlatforms.find(p=>p.id===platformId);
+    const category = allCategories.find(c=>c.id===categoryId);
+    const ref = db.ref('subCategories').push();
+    const payload = {platformId,platformName:platform?.name||'',categoryId,categoryName:category?.name||'',name,createdAt:Date.now()};
+    if(imageUrl) payload.imageUrl = imageUrl;
+    await ref.set(payload);
+    document.getElementById('sub-name').value='';
+    document.getElementById('sub-image').value='';
+    showToast('Sub-category added!','success');
+    await loadAllServiceData();
+    renderSubCategories();
+  }catch(e){showToast('Failed: '+e.message,'error');}
+}
+function renderSubCategories(){
+  const tbody = document.querySelector('#sub-table tbody');
+  if(!allSubCategories.length){tbody.innerHTML='<tr><td colspan="6" class="empty">No sub-categories yet</td></tr>';return;}
+  tbody.innerHTML = allSubCategories.map((s,i)=>{
+    const pl = allPlatforms.find(p=>p.id===s.platformId);
+    const cat = allCategories.find(c=>c.id===s.categoryId);
+    const imgCell = s.imageUrl
+      ? `<img class="preview-thumb" src="${escapeHtml(s.imageUrl)}" onerror="this.outerHTML='<span style=&quot;font-size:22px;&quot;>📦</span>'">`
+      : `<span style="font-size:22px;">📦</span>`;
+    return `<tr><td>${i+1}</td><td>${imgCell}</td><td>${escapeHtml(pl?.name||s.platformName||'-')}</td><td>${escapeHtml(cat?.name||s.categoryName||'-')}</td><td><b>${escapeHtml(s.name)}</b></td><td class="action-btns"><button class="icon-btn edit" onclick="editSubCategory('${s.id}')">✏️</button><button class="icon-btn delete" onclick="deleteSubCategory('${s.id}')">🗑️</button></td></tr>`;
+  }).join('');
+}
+async function editSubCategory(id){
+  const sub = allSubCategories.find(s=>s.id===id);
+  if(!sub)return;
+  const name = prompt('Edit sub-category name:',sub.name);
+  if(name===null) return;
+  const trimmedName = name.trim();
+  if(!trimmedName){showToast('Name cannot be empty','warning');return;}
+  const imageUrl = prompt('Edit image URL (imgbb link, blank to remove):', sub.imageUrl||'');
+  if(imageUrl===null) return;
+  try{
+    const updates = {name:trimmedName};
+    if(imageUrl.trim()) updates.imageUrl = imageUrl.trim();
+    else updates.imageUrl = null;
+    await db.ref('subCategories/'+id).update(updates);
+    showToast('Updated','success');
+    await loadAllServiceData();
+    renderSubCategories();
+  }catch(e){showToast('Failed','error');}
+}
+function deleteSubCategory(id){
+  showConfirm('Delete this sub-category? All its services will also be deleted!',async()=>{
+    try{
+      await db.ref('subCategories/'+id).remove();
+      const svcs = allServices.filter(s=>s.subCategoryId===id);
+      for(const s of svcs){await db.ref('services/'+s.id).remove();}
+      showToast('Deleted','success');
+      await loadAllServiceData();
+      renderSubCategories();
+    }catch(e){showToast('Failed','error');}
+  });
+}
+
+// SERVICES CRUD
+function addQtyPair(qty='',price=''){
+  const wrap = document.getElementById('qty-pairs');
+  const row = document.createElement('div');
+  row.className = 'qty-pair';
+  row.innerHTML = `<input type="number" placeholder="Quantity (e.g. 1000)" value="${qty}" class="qty-input"><input type="number" placeholder="Price (₹)" step="0.01" value="${price}" class="price-input"><button class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">×</button>`;
+  wrap.appendChild(row);
+}
+function resetServiceForm(){
+  document.getElementById('svc-edit-id').value='';
+  document.getElementById('svc-form-title').textContent='Add New Service';
+  loadSvcSubCategoryCombined();
+  document.getElementById('svc-subcategory').value='';
+  document.getElementById('svc-title').value='';
+  document.getElementById('svc-desc').value='';
+  document.getElementById('svc-active').checked=true;
+  document.getElementById('qty-pairs').innerHTML='';
+  addQtyPair();
+}
+async function saveService(){
+  const editId = document.getElementById('svc-edit-id').value;
+  const subCategoryId = document.getElementById('svc-subcategory').value;
+  const title = document.getElementById('svc-title').value.trim();
+  const desc = document.getElementById('svc-desc').value.trim();
+  const active = document.getElementById('svc-active').checked;
+  if(!subCategoryId||!title){showToast('Select sub-category and enter title','warning');return;}
+  const subCategory = allSubCategories.find(s=>s.id===subCategoryId);
+  if(!subCategory){showToast('Invalid sub-category','error');return;}
+  const platformId = subCategory.platformId;
+  const categoryId = subCategory.categoryId;
+  const qInputs = document.querySelectorAll('#qty-pairs .qty-input');
+  const pInputs = document.querySelectorAll('#qty-pairs .price-input');
+  const quantities={};
+  let hasQty = false;
+  for(let i=0;i<qInputs.length;i++){
+    const q = qInputs[i].value;
+    const p = pInputs[i].value;
+    if(q && p){quantities[q]=parseFloat(p);hasQty=true;}
+  }
+  if(!hasQty){showToast('Add at least one quantity option','warning');return;}
+  const platform = allPlatforms.find(p=>p.id===platformId);
+  const category = allCategories.find(c=>c.id===categoryId);
+  const payload = {
+    platformId, platformName: platform?.name||'',
+    categoryId, categoryName: category?.name||'',
+    subCategoryId, subCategoryName: subCategory?.name||'',
+    title, description: desc,
+    quantities, active,
+    createdAt: editId?undefined:Date.now(),
+    updatedAt: Date.now()
+  };
+  try{
+    if(editId){
+      await db.ref('services/'+editId).update(payload);
+      showToast('Service updated!','success');
+    } else {
+      const ref = db.ref('services').push();
+      await ref.set(payload);
+      showToast('Service added!','success');
+    }
+    await loadAllServiceData();
+    renderServicesAdmin();
+    resetServiceForm();
+  }catch(e){console.error(e);showToast('Failed: '+e.message,'error');}
+}
+function renderServicesAdmin(){
+  const tbody = document.querySelector('#svc-table tbody');
+  if(!allServices.length){tbody.innerHTML='<tr><td colspan="8" class="empty">No services yet</td></tr>';return;}
+  tbody.innerHTML = allServices.map((s,i)=>{
+    const optsCount = Object.keys(s.quantities||{}).length;
+    return `<tr><td>${i+1}</td><td>${escapeHtml(s.platformName||'-')}</td><td>${escapeHtml(s.categoryName||'-')}</td><td>${escapeHtml(s.subCategoryName||'-')}</td><td><b>${escapeHtml(s.title||'')}</b></td><td>${optsCount} options</td><td><span class="badge ${s.active!==false?'badge-active':'badge-inactive'}">${s.active!==false?'Active':'Inactive'}</span></td><td class="action-btns"><button class="icon-btn edit" onclick="editService('${s.id}')">✏️</button><button class="icon-btn delete" onclick="deleteService('${s.id}')">🗑️</button></td></tr>`;
+  }).join('');
+}
+function editService(id){
+  const s = allServices.find(x=>x.id===id);
+  if(!s)return;
+  document.getElementById('svc-edit-id').value = id;
+  document.getElementById('svc-form-title').textContent = 'Edit Service';
+  loadSvcSubCategoryCombined();
+  document.getElementById('svc-subcategory').value = s.subCategoryId||'';
+  document.getElementById('svc-title').value = s.title||'';
+  document.getElementById('svc-desc').value = s.description||'';
+  document.getElementById('svc-active').checked = s.active!==false;
+  document.getElementById('qty-pairs').innerHTML='';
+  const qs = s.quantities||{};
+  Object.keys(qs).forEach(k=>addQtyPair(k,qs[k]));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function deleteService(id){
+  showConfirm('Delete this service?',async()=>{
+    try{
+      await db.ref('services/'+id).remove();
+      showToast('Service deleted','success');
+      await loadAllServiceData();
+      renderServicesAdmin();
+    }catch(e){showToast('Failed','error');}
+  });
+}
+
+// PAYMENTS
+async function loadPayments(){
+  try{
+    const snap = await db.ref('paymentRequests').once('value');
+    allPaymentReqs = Object.entries(snap.val()||{}).map(([id,v])=>({id,...v})).sort((a,b)=>b.createdAt-a.createdAt);
+    renderPayments();
+  }catch(e){console.error(e);}
+}
+function filterPay(el,status){
+  document.querySelectorAll('#page-payments .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  payFilter=status;renderPayments();
+}
+function renderPayments(){
+  const search = document.getElementById('pay-search')?.value.toLowerCase()||'';
+  let arr = allPaymentReqs;
+  if(payFilter!=='all') arr = arr.filter(p=>p.status===payFilter);
+  if(search) arr = arr.filter(p=>(p.userName||'').toLowerCase().includes(search)||(p.userEmail||'').toLowerCase().includes(search)||(p.utrNumber||'').includes(search));
+  const tbody = document.querySelector('#pay-table tbody');
+  if(!arr.length){tbody.innerHTML='<tr><td colspan="8" class="empty">No payment requests</td></tr>';return;}
+  tbody.innerHTML = arr.map((p,i)=>{
+    let actionBtns = '';
+    if(p.status==='pending'){
+      actionBtns = `<button class="btn btn-success btn-sm" onclick="approvePayment('${p.id}')">✓ Approve</button> <button class="btn btn-danger btn-sm" onclick="rejectPayment('${p.id}')">✕ Reject</button>`;
+    } else {
+      actionBtns = `<span class="badge badge-${p.status}">${p.status}</span>`;
+    }
+    return `<tr><td>${i+1}</td><td>${escapeHtml(p.userName||'')}</td><td>${escapeHtml(p.userEmail||'')}</td><td><b style="color:var(--success);">₹${(+p.amount).toFixed(2)}</b></td><td>${escapeHtml(p.utrNumber||'')} <button class="copy-btn" onclick="navigator.clipboard.writeText('${p.utrNumber||''}');showToast('UTR copied','success');">📋</button></td><td>${fmtDate(p.createdAt)}</td><td><span class="badge badge-${p.status}">${p.status}</span></td><td>${actionBtns}</td></tr>`;
+  }).join('');
+}
+async function approvePayment(id){
+  const req = allPaymentReqs.find(p=>p.id===id);
+  if(!req)return;
+  if(req.status!=='pending'){showToast('Already processed','warning');return;}
+  showLoading('Approving...');
+  try{
+    await db.ref('users/'+req.userId+'/balance').transaction(b=>(b||0)+req.amount);
+    await db.ref('paymentRequests/'+id).update({status:'approved',approvedAt:Date.now(),approvedBy:currentAdmin.uid});
+    await db.ref('balanceLogs').push({userId:req.userId,userName:req.userName,type:'add',amount:req.amount,reason:'Payment approved (UTR: '+req.utrNumber+')',adminId:currentAdmin.uid,createdAt:Date.now()});
+    showToast(`✅ ₹${req.amount} added to ${req.userName}`,'success');
+    await loadPayments();
+    if(document.getElementById('page-dashboard').classList.contains('active')) loadDashboard();
+  }catch(e){console.error(e);showToast('Approval failed','error');}
+  finally{hideLoading();}
+}
+async function rejectPayment(id){
+  showConfirm('Reject this payment request?',async()=>{
+    showLoading('Rejecting...');
+    try{
+      await db.ref('paymentRequests/'+id).update({status:'rejected',rejectedAt:Date.now(),rejectedBy:currentAdmin.uid});
+      showToast('Request rejected','info');
+      await loadPayments();
+      if(document.getElementById('page-dashboard').classList.contains('active')) loadDashboard();
+    }catch(e){showToast('Failed','error');}
+    finally{hideLoading();}
+  });
+}
+
+// USERS
+async function loadUsers(){
+  try{
+    const [u,o,l] = await Promise.all([
+      db.ref('users').once('value'),
+      db.ref('orders').once('value'),
+      db.ref('balanceLogs').once('value')
+    ]);
+    allUsersData = Object.entries(u.val()||{}).map(([id,v])=>({id,...v})).filter(x=>x.role!=='admin');
+    const orders = Object.values(o.val()||{});
+    allUsersData.forEach(u=>{u._orderCount = orders.filter(x=>x.userId===u.id).length;});
+    allLogs = Object.entries(l.val()||{}).map(([id,v])=>({id,...v})).sort((a,b)=>b.createdAt-a.createdAt);
+    renderUsers();renderLogs();
+  }catch(e){console.error(e);}
+}
+function renderUsers(){
+  const search = document.getElementById('user-search')?.value.toLowerCase()||'';
+  let arr = allUsersData;
+  if(search) arr = arr.filter(u=>(u.name||'').toLowerCase().includes(search)||(u.email||'').toLowerCase().includes(search));
+  const tbody = document.querySelector('#user-table tbody');
+  if(!arr.length){tbody.innerHTML='<tr><td colspan="8" class="empty">No users found</td></tr>';return;}
+  tbody.innerHTML = arr.map((u,i)=>{
+    return `<tr>
+      <td>${i+1}</td>
+      <td><b>${escapeHtml(u.name||'-')}</b></td>
+      <td>${escapeHtml(u.email||'-')}</td>
+      <td><b>₹${(+u.balance||0).toFixed(2)}</b></td>
+      <td>${u._orderCount||0}</td>
+      <td>${fmtDate(u.createdAt)}</td>
+      <td><span class="badge ${u.banned?'badge-rejected':'badge-active'}">${u.banned?'Banned':'Active'}</span></td>
+      <td class="action-btns">
+        <button class="btn btn-success btn-sm" onclick="openBalanceModal('${u.id}','add')">+ Balance</button>
+        <button class="btn btn-warning btn-sm" onclick="openBalanceModal('${u.id}','deduct')">- Deduct</button>
+        <button class="btn btn-secondary btn-sm" onclick="viewUserOrders('${u.id}','${escapeHtml(u.name||'').replace(/'/g,"\\'")}')">Orders</button>
+        <button class="btn btn-danger btn-sm" onclick="toggleBan('${u.id}',${!u.banned})">${u.banned?'Unban':'Ban'}</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+function renderLogs(){
+  const tbody = document.querySelector('#log-table tbody');
+  if(!allLogs.length){tbody.innerHTML='<tr><td colspan="5" class="empty">No logs yet</td></tr>';return;}
+  tbody.innerHTML = allLogs.slice(0,50).map(l=>{
+    const color = l.amount>=0?'var(--success)':'var(--danger)';
+    return `<tr><td>${fmtDate(l.createdAt)}</td><td>${escapeHtml(l.userName||'-')}</td><td>${escapeHtml(l.type||'-')}</td><td style="color:${color};"><b>${l.amount>=0?'+':''}₹${(+l.amount).toFixed(2)}</b></td><td>${escapeHtml(l.reason||'-')}</td></tr>`;
+  }).join('');
+}
+function openBalanceModal(uid,action){
+  const u = allUsersData.find(x=>x.id===uid);
+  if(!u)return;
+  document.getElementById('bal-user-id').value = uid;
+  document.getElementById('bal-action').value = action;
+  document.getElementById('bal-modal-title').textContent = action==='add'?'Add Balance':'Deduct Balance';
+  document.getElementById('bal-user-name').value = u.name+' ('+u.email+')';
+  document.getElementById('bal-current').value = '₹'+(u.balance||0).toFixed(2);
+  document.getElementById('bal-amount').value='';
+  document.getElementById('bal-reason').value='';
+  const btn = document.getElementById('bal-confirm');
+  btn.className = 'btn '+(action==='add'?'btn-success':'btn-warning');
+  btn.textContent = action==='add'?'+ Add':'- Deduct';
+  openModal('balance-modal');
+}
+async function confirmBalance(){
+  const uid = document.getElementById('bal-user-id').value;
+  const action = document.getElementById('bal-action').value;
+  const amount = parseFloat(document.getElementById('bal-amount').value);
+  const reason = document.getElementById('bal-reason').value.trim()||'Manual '+action+' by admin';
+  if(!amount||amount<=0){showToast('Invalid amount','warning');return;}
+  const u = allUsersData.find(x=>x.id===uid);
+  if(!u)return;
+  if(action==='deduct' && (u.balance||0)<amount){showToast('Insufficient balance','error');return;}
+  showLoading('Processing...');
+  try{
+    const delta = action==='add'?amount:-amount;
+    await db.ref('users/'+uid+'/balance').transaction(b=>(b||0)+delta);
+    await db.ref('balanceLogs').push({userId:uid,userName:u.name,type:action,amount:delta,reason,adminId:currentAdmin.uid,createdAt:Date.now()});
+    showToast(`${action==='add'?'Added':'Deducted'} ₹${amount}`,'success');
+    closeModal('balance-modal');
+    await loadUsers();
+  }catch(e){showToast('Failed','error');}
+  finally{hideLoading();}
+}
+async function toggleBan(uid,ban){
+  showConfirm(ban?'Ban this user?':'Unban this user?',async()=>{
+    try{
+      await db.ref('users/'+uid+'/banned').set(ban);
+      showToast(ban?'User banned':'User unbanned','success');
+      loadUsers();
+    }catch(e){showToast('Failed','error');}
+  });
+}
+async function viewUserOrders(uid,name){
+  document.getElementById('uo-title').textContent = 'Orders of '+name;
+  const tbody = document.querySelector('#uo-table tbody');
+  tbody.innerHTML='<tr><td colspan="6" class="empty">Loading...</td></tr>';
+  openModal('user-orders-modal');
+  try{
+    const snap = await db.ref('orders').orderByChild('userId').equalTo(uid).once('value');
+    const data = snap.val()||{};
+    const arr = Object.entries(data).map(([id,v])=>({id,...v})).sort((a,b)=>b.createdAt-a.createdAt);
+    if(!arr.length){tbody.innerHTML='<tr><td colspan="6" class="empty">No orders</td></tr>';return;}
+    tbody.innerHTML = arr.map(o=>`<tr><td>${o.id.substring(0,8)}</td><td>${escapeHtml(o.serviceName||'')}</td><td>${(+o.quantity).toLocaleString('en-IN')}</td><td>₹${(+o.totalPrice).toFixed(2)}</td><td><span class="badge badge-${o.status}">${o.status}</span></td><td>${fmtDate(o.createdAt)}</td></tr>`).join('');
+  }catch(e){tbody.innerHTML='<tr><td colspan="6" class="empty">Failed</td></tr>';}
+}
+
+// ORDERS
+async function loadAdminOrders(){
+  try{
+    const snap = await db.ref('orders').once('value');
+    allOrdersData = Object.entries(snap.val()||{}).map(([id,v])=>({id,...v})).sort((a,b)=>b.createdAt-a.createdAt);
+    renderAdminOrders();
+  }catch(e){console.error(e);}
+}
+function renderAdminOrders(){
+  const status = document.getElementById('ord-filter-status')?.value||'all';
+  const search = (document.getElementById('ord-filter-search')?.value||'').toLowerCase();
+  let arr = allOrdersData;
+  if(status!=='all') arr = arr.filter(o=>o.status===status);
+  if(search) arr = arr.filter(o=>(o.userEmail||'').toLowerCase().includes(search)||o.id.toLowerCase().includes(search));
+  const tbody = document.querySelector('#ord-table tbody');
+  if(!arr.length){tbody.innerHTML='<tr><td colspan="10" class="empty">No orders found</td></tr>';return;}
+  tbody.innerHTML = arr.map(o=>{
+    return `<tr>
+      <td>${o.id.substring(0,8)}</td>
+      <td>${escapeHtml(o.userEmail||'')}</td>
+      <td>${escapeHtml(o.platformName||'-')}</td>
+      <td>${escapeHtml(o.serviceName||'-')}</td>
+      <td><a href="${escapeHtml(o.link||'#')}" target="_blank" style="font-size:11px;">${escapeHtml((o.link||'').substring(0,30))}...</a></td>
+      <td>${(+o.quantity).toLocaleString('en-IN')}</td>
+      <td><b>₹${(+o.totalPrice).toFixed(2)}</b></td>
+      <td><select onchange="updateOrderStatus('${o.id}',this.value)" style="padding:6px 8px;font-size:11px;">
+        <option value="pending" ${o.status==='pending'?'selected':''}>Pending</option>
+        <option value="inprogress" ${o.status==='inprogress'?'selected':''}>In Progress</option>
+        <option value="completed" ${o.status==='completed'?'selected':''}>Completed</option>
+        <option value="cancelled" ${o.status==='cancelled'?'selected':''}>Cancelled</option>
+      </select></td>
+      <td>${fmtDate(o.createdAt)}</td>
+      <td class="action-btns"><button class="btn btn-danger btn-sm" onclick="cancelOrderRefund('${o.id}')">Refund</button></td>
+    </tr>`;
+  }).join('');
+}
+async function updateOrderStatus(id,status){
+  try{
+    await db.ref('orders/'+id).update({status,updatedAt:Date.now()});
+    showToast('Status updated to '+status,'success');
+    const o = allOrdersData.find(x=>x.id===id);
+    if(o) o.status = status;
+  }catch(e){showToast('Failed','error');}
+}
+async function cancelOrderRefund(id){
+  const o = allOrdersData.find(x=>x.id===id);
+  if(!o)return;
+  if(o.status==='cancelled'){showToast('Already cancelled','warning');return;}
+  showConfirm(`Cancel order and refund ₹${(+o.totalPrice).toFixed(2)} to ${o.userName}?`,async()=>{
+    showLoading('Refunding...');
+    try{
+      await db.ref('orders/'+id+'/status').set('cancelled');
+      await db.ref('users/'+o.userId+'/balance').transaction(b=>(b||0)+(+o.totalPrice));
+      await db.ref('balanceLogs').push({userId:o.userId,userName:o.userName,type:'add',amount:+o.totalPrice,reason:'Refund for cancelled order',adminId:currentAdmin.uid,orderId:id,createdAt:Date.now()});
+      showToast('Order cancelled & refunded','success');
+      loadAdminOrders();
+    }catch(e){showToast('Failed','error');}
+    finally{hideLoading();}
+  });
+}
+function exportCSV(){
+  if(!allOrdersData.length){showToast('No orders to export','warning');return;}
+  const header = ['Order ID','User Name','Email','Platform','Category','Sub-Category','Service','Link','Quantity','Total Price','Status','Date'];
+  const rows = allOrdersData.map(o=>[o.id,o.userName||'',o.userEmail||'',o.platformName||'',o.categoryName||'',o.subCategoryName||'',o.serviceName||'',o.link||'',o.quantity,o.totalPrice,o.status,fmtDate(o.createdAt)]);
+  const csv = [header,...rows].map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;a.download = 'orders-'+Date.now()+'.csv';a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSV exported','success');
+}
+
+// SETTINGS
+async function loadSettings(){
+  try{
+    const snap = await db.ref('settings').once('value');
+    const s = snap.val()||{};
+    document.getElementById('set-upi').value = s.upiId||'';
+    document.getElementById('set-wa').value = s.whatsappNumber||'';
+    document.getElementById('set-panel-name').value = s.panelName||'GrowthKamao';
+    document.getElementById('set-welcome').value = s.welcomeMessage||'';
+    document.getElementById('set-maintenance').checked = s.maintenanceMode===true;
+    if(s.upiId) showUPIPreview(s.upiId);
+  }catch(e){console.error(e);}
+}
+function showUPIPreview(upi){
+  const box = document.getElementById('upi-preview');
+  box.classList.remove('hide');
+  document.getElementById('upi-qr').innerHTML='';
+  new QRCode(document.getElementById('upi-qr'),{text:'upi://pay?pa='+encodeURIComponent(upi)+'&pn=GrowthKamao&cu=INR',width:180,height:180});
+}
+async function saveUPI(){
+  const upi = document.getElementById('set-upi').value.trim();
+  if(!upi){showToast('Enter UPI ID','warning');return;}
+  try{
+    await db.ref('settings/upiId').set(upi);
+    showToast('UPI saved!','success');
+    showUPIPreview(upi);
+  }catch(e){showToast('Failed','error');}
+}
+async function saveWA(){
+  const wa = document.getElementById('set-wa').value.trim().replace(/\D/g,'');
+  if(!wa){showToast('Enter WhatsApp number','warning');return;}
+  try{
+    await db.ref('settings/whatsappNumber').set(wa);
+    showToast('WhatsApp saved!','success');
+  }catch(e){showToast('Failed','error');}
+}
+function testWA(){
+  const wa = document.getElementById('set-wa').value.trim().replace(/\D/g,'');
+  if(!wa){showToast('Enter WhatsApp number first','warning');return;}
+  const msg = '✅ Test message from GrowthKamao Admin Panel';
+  window.open('https://wa.me/'+wa+'?text='+encodeURIComponent(msg),'_blank');
+}
+async function savePanel(){
+  try{
+    await db.ref('settings').update({
+      panelName: document.getElementById('set-panel-name').value.trim()||'GrowthKamao',
+      welcomeMessage: document.getElementById('set-welcome').value.trim(),
+      maintenanceMode: document.getElementById('set-maintenance').checked
+    });
+    showToast('Settings saved!','success');
+  }catch(e){showToast('Failed','error');}
+}
+
+setTimeout(()=>{const qp=document.getElementById('qty-pairs');if(qp && !qp.children.length)addQtyPair();},500);
+</script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
